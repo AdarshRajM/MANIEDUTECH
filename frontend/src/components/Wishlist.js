@@ -1,28 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, List, ListItem, ListItemText, Button, Box, Paper } from '@mui/material';
+import { Container, Typography, List, ListItem, ListItemText, Paper } from '@mui/material';
 import axios from 'axios';
 
 const Wishlist = () => {
   const [items, setItems] = useState([]);
   const username = localStorage.getItem('username') || 'testuser';
 
-  const fetchWishlist = async () => {
-    try {
-      const res = await axios.get(`/wishlist/${username}`);
-      setItems(res.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  useEffect(() => { fetchWishlist(); }, []);
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      try {
+        const { data } = await axios.get(`/wishlist/${username}`);
+        setItems(data || []);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchWishlist();
+  }, [username]);
 
   return (
     <Container sx={{ py: 4 }}>
       <Paper sx={{ p: 3 }}>
         <Typography variant="h4" sx={{ mb: 2 }}>My Wishlist</Typography>
         {items.length === 0 ? (
-          <Typography>No wishlist items yet. Add from courses.</Typography>
+          <Typography>No wishlist items yet.</Typography>
         ) : (
           <List>
             {items.map((item) => (
@@ -38,3 +39,5 @@ const Wishlist = () => {
 };
 
 export default Wishlist;
+
+

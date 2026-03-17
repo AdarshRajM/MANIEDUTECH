@@ -1,40 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, TextField, Dialog, DialogActions, DialogContent, DialogTitle, Pagination, CircularProgress } from '@mui/material';
 import axios from 'axios';
 
 const Students = () => {
   const [students, setStudents] = useState([]);
   const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', registrationNumber: '', section: '', rollNumber: '', courseId: '' });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchStudents();
-  }, [page, searchQuery]);
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     setLoading(true);
-    const token = localStorage.getItem('token');
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    const url = searchQuery ? `/students/search?query=${searchQuery}&page=${page}&size=10` : `/students/paged?page=${page}&size=10`;
     try {
-      const response = await axios.get(url, config);
-      setStudents(response.data.content);
-      setTotalPages(response.data.totalPages);
+      const token = localStorage.getItem('token');
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      const url = searchQuery ? `/students/search?query=${searchQuery}&page=${page}&size=10` : `/students/paged?page=${page}&size=10`;
+      const { data } = await axios.get(url, config);
+      setStudents(data.content || []);
+      setTotalPages(data.totalPages || 1);
     } catch (error) {
       alert('Failed to fetch students');
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, searchQuery]);
+
+  useEffect(() => {
+    fetchStudents();
+  }, [fetchStudents]);
 
   const handleAdd = async () => {
-    const token = localStorage.getItem('token');
-    const config = { headers: { Authorization: `Bearer ${token}` } };
     try {
+      const token = localStorage.getItem('token');
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
       await axios.post('/students', form, config);
       setOpen(false);
       setForm({ name: '', registrationNumber: '', section: '', rollNumber: '', courseId: '' });
@@ -47,10 +47,10 @@ const Students = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>Students</Typography>
-      <TextField label="Search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+      <TextField label="Search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} sx={{ mr: 1 }} />
       <Button variant="contained" onClick={() => setOpen(true)}>Add Student</Button>
-      {loading ? <CircularProgress /> : (
-        <TableContainer component={Paper}>
+      {loading ? <CircularProgress sx={{ mt: 2 }} /> : (
+        <TableContainer component={Paper} sx={{ mt: 2 }}>
           <Table>
             <TableHead>
               <TableRow>
@@ -75,7 +75,7 @@ const Students = () => {
           </Table>
         </TableContainer>
       )}
-      <Pagination count={totalPages} page={page + 1} onChange={(e, p) => setPage(p - 1)} />
+      <Pagination count={totalPages} page={page + 1} onChange={(e, p) => setPage(p - 1)} sx={{ mt: 2 }} />
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Add Student</DialogTitle>
         <DialogContent>
