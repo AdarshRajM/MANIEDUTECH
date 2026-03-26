@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TextField, Button, Container, Typography, Box, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import axios from 'axios';
 
@@ -13,7 +13,29 @@ const Login = () => {
   const [forgotOtp, setForgotOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
+  // Captcha States
+  const [captchaText, setCaptchaText] = useState('');
+  const [captchaInput, setCaptchaInput] = useState('');
+  const [captchaCorrectPos, setCaptchaCorrectPos] = useState(0);
+
+  useEffect(() => {
+    generateCaptcha();
+  }, []);
+
+  const generateCaptcha = () => {
+    const num1 = Math.floor(Math.random() * 10) + 1;
+    const num2 = Math.floor(Math.random() * 10) + 1;
+    setCaptchaText(`${num1} + ${num2} = ?`);
+    setCaptchaCorrectPos(num1 + num2);
+    setCaptchaInput('');
+  };
+
   const handleLogin = async () => {
+    if (parseInt(captchaInput) !== captchaCorrectPos) {
+      alert("Incorrect CAPTCHA answer!");
+      generateCaptcha();
+      return;
+    }
     try {
       const response = await axios.post('/auth/login', { username, password });
       localStorage.setItem('token', response.data.token);
@@ -77,9 +99,21 @@ const Login = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-          Tip: use seeded default user: Username: "Adarsh Raj", Password: "Mani789" if you do not have an account yet.
-        </Typography>
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mt: 2 }}>
+           <Typography variant="h6" sx={{ backgroundColor: '#f0f0f0', p: 1, borderRadius: 1, letterSpacing: 2, mr: 2, userSelect: 'none' }}>
+             {captchaText}
+           </Typography>
+           <TextField
+             required
+             label="Captcha Verify"
+             size="small"
+             value={captchaInput}
+             onChange={(e) => setCaptchaInput(e.target.value)}
+             sx={{ flexGrow: 1 }}
+           />
+        </Box>
+
         <Button
           type="submit"
           fullWidth

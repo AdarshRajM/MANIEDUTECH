@@ -10,6 +10,7 @@ const SectionLearning = () => {
   const [chat, setChat] = useState('');
   const [chatLog, setChatLog] = useState([]);
   const [newLive, setNewLive] = useState({ title: '', scheduledAt: '', meetingLink: '', description: '', section });
+  const [activeMeeting, setActiveMeeting] = useState(null);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -129,12 +130,33 @@ const SectionLearning = () => {
         <CardContent>
           <Typography variant="h6">Live Classes</Typography>
           <List>
-            {live.length === 0 ? <Typography>No live classes.</Typography> : live.map((item) => (
-              <ListItem key={item.id} secondaryAction={<Button onClick={() => window.open(item.meetingLink, '_blank')}>Join</Button>}>
+            {live.length === 0 ? <Typography>No live classes scheduled.</Typography> : live.map((item) => (
+              <ListItem key={item.id} secondaryAction={
+                <Button variant="contained" color="primary" onClick={() => setActiveMeeting(item.meetingLink || `maniedutech-live-${item.id}`)}>
+                  Join Active Class
+                </Button>
+              }>
                 <ListItemText primary={item.title} secondary={`${new Date(item.scheduledAt).toLocaleString()} • ${item.description || 'No description'}`} />
               </ListItem>
             ))}
           </List>
+          
+          {activeMeeting && (
+            <Box sx={{ mt: 3, p: 2, border: '1px solid #ddd', borderRadius: 2, backgroundColor: '#f9f9f9' }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                <Typography variant="h6" color="secondary">🟢 Live Video & Voice Call</Typography>
+                <Button variant="outlined" color="error" onClick={() => setActiveMeeting(null)}>Leave Class</Button>
+              </Stack>
+              <Box sx={{ width: '100%', height: '500px', backgroundColor: '#000', borderRadius: 2, overflow: 'hidden' }}>
+                <iframe 
+                  src={`https://meet.jit.si/${encodeURIComponent(activeMeeting)}`}
+                  allow="camera; microphone; fullscreen; display-capture; autoplay"
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                  title="Live Class Video"
+                />
+              </Box>
+            </Box>
+          )}
         </CardContent>
       </Card>
 
@@ -142,10 +164,10 @@ const SectionLearning = () => {
         <CardContent>
           <Typography variant="h6">Class Chat</Typography>
           <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-            <Button variant="outlined" onClick={raiseHand}>✔ Raise Hand</Button>
-            <Button variant="outlined" onClick={() => alert('Voice coming soon')}>🎤 Voice</Button>
+            <Button variant="outlined" color="info" onClick={raiseHand}>✋ Raise Hand</Button>
+            <Button variant="outlined" color="success" onClick={() => setActiveMeeting(`maniedutech-voice-${section}`)}>📞 Join Voice Room</Button>
           </Stack>
-          <List sx={{ maxHeight: 200, overflow: 'auto', mb: 2 }}>
+          <List sx={{ maxHeight: 200, overflow: 'auto', mb: 2, border: '1px solid #eee', borderRadius: 1, p: 1 }}>
             {chatLog.map((msg) => (
               <ListItem key={msg.id}>
                 <ListItemText primary={`${msg.sender} (${msg.role})`} secondary={msg.message} />

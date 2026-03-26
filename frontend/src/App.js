@@ -18,9 +18,10 @@ import Coupons from './components/Coupons';
 import Chatbot from './components/Chatbot';
 import SectionLearning from './components/SectionLearning';
 import FacultyPortal from './components/FacultyPortal';
+import CustomCursor from './components/CustomCursor';
 import axios from 'axios';
 
-axios.defaults.baseURL = 'http://localhost:8081';
+axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8081';
 
 const theme = createTheme({
   palette: {
@@ -44,6 +45,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <CustomCursor />
       <Router>
         <Navbar />
         <Routes>

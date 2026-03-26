@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextField, Button, Container, Typography, Box, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { TextField, Button, Container, Typography, Box, FormControl, InputLabel, Select, MenuItem, Stack } from '@mui/material';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -72,16 +72,28 @@ const Signup = () => {
           onChange={(e) => setForm({ ...form, email: e.target.value })}
           disabled={otpSent}
         />
-        <TextField
-          margin="normal"
-          required
-          fullWidth
-          label="Contact Number"
-          type="tel"
-          value={form.contactNumber}
-          onChange={(e) => setForm({ ...form, contactNumber: e.target.value })}
-          disabled={otpSent}
-        />
+        <Stack direction="row" spacing={2} sx={{ width: '100%', mt: 2, mb: 1 }} alignItems="center">
+          <TextField
+            required
+            fullWidth
+            label="Contact Number"
+            type="tel"
+            value={form.contactNumber}
+            onChange={(e) => setForm({ ...form, contactNumber: e.target.value })}
+            disabled={otpSent}
+          />
+          {!otpSent && (
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleSendOtp}
+              sx={{ height: '56px', whiteSpace: 'nowrap' }}
+            >
+              Send OTP
+            </Button>
+          )}
+        </Stack>
+
         <FormControl fullWidth margin="normal" disabled={otpSent}>
           <InputLabel>Role</InputLabel>
           <Select
@@ -94,17 +106,7 @@ const Signup = () => {
           </Select>
         </FormControl>
 
-        {!otpSent ? (
-          <Button
-            fullWidth
-            variant="contained"
-            color="secondary"
-            sx={{ mt: 3, mb: 2 }}
-            onClick={handleSendOtp}
-          >
-            Send OTP
-          </Button>
-        ) : (
+        {otpSent && (
           <>
             <TextField
               margin="normal"
