@@ -23,12 +23,16 @@ const Navbar = () => {
         </Typography>
         {!role && (<><Button color="inherit" component={Link} to="/signup">Signup</Button>
         <Button color="inherit" component={Link} to="/login">Login</Button></>)}
-        <Button color="inherit" component={Link} to="/dashboard">Dashboard</Button>
-        <Button color="inherit" component={Link} to="/courses">Courses</Button>
-        <Button color="inherit" component={Link} to="/section">Section</Button>
-        <Button color="inherit" component={Link} to="/products">Store</Button>
-        <Button color="inherit" component={Link} to="/wishlist">Wishlist</Button>
-        <Button color="inherit" component={Link} to="/coupons">Coupons</Button>
+        {role && (
+          <>
+            <Button color="inherit" component={Link} to="/dashboard">Dashboard</Button>
+            <Button color="inherit" component={Link} to="/courses">Courses</Button>
+            <Button color="inherit" component={Link} to="/section">Section</Button>
+            <Button color="inherit" component={Link} to="/products">Store</Button>
+            <Button color="inherit" component={Link} to="/wishlist">Wishlist</Button>
+            <Button color="inherit" component={Link} to="/coupons">Coupons</Button>
+          </>
+        )}
         <Button color="inherit" component={Link} to="/chatbot">Chatbot</Button>
         {(role === 'FACULTY' || role === 'PRINCIPAL') && (
           <Button color="inherit" component={Link} to="/faculty">Faculty</Button>

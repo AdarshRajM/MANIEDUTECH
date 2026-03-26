@@ -23,6 +23,10 @@ public class User implements UserDetails {
 
     private String username;
 
+    private String email;
+
+    private String contactNumber;
+
     private String password;
 
     @ManyToOne
