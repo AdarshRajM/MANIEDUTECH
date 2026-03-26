@@ -12,7 +12,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
+import org.springframework.cache.annotation.EnableCaching;
+
 @SpringBootApplication
+@EnableCaching
 public class StudentCourseManagementSystemApplication implements CommandLineRunner {
 
 	@Autowired
