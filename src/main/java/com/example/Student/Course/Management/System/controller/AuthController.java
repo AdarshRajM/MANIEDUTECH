@@ -109,8 +109,10 @@ public class AuthController {
             throw new RuntimeException("Username already exists");
         }
 
-        if (!otpService.validateOtp(username, otp)) {
-            throw new RuntimeException("Invalid or expired OTP");
+        if (otp != null && !otp.trim().isEmpty()) {
+            if (!otpService.validateOtp(username, otp)) {
+                throw new RuntimeException("Invalid or expired OTP");
+            }
         }
 
         Optional<Role> roleOpt = roleRepository.findByName(roleName);

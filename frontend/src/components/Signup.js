@@ -23,10 +23,6 @@ const Signup = () => {
   };
 
   const handleSignup = async () => {
-    if (!form.otp) {
-      alert("Please enter the OTP");
-      return;
-    }
     try {
       await axios.post('/auth/signup', form);
       localStorage.setItem('role', form.role);
@@ -60,7 +56,6 @@ const Signup = () => {
           type="password"
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
-          disabled={otpSent}
         />
         <TextField
           margin="normal"
@@ -70,7 +65,6 @@ const Signup = () => {
           type="email"
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
-          disabled={otpSent}
         />
         <Stack direction="row" spacing={2} sx={{ width: '100%', mt: 2, mb: 1 }} alignItems="center">
           <TextField
@@ -80,21 +74,28 @@ const Signup = () => {
             type="tel"
             value={form.contactNumber}
             onChange={(e) => setForm({ ...form, contactNumber: e.target.value })}
-            disabled={otpSent}
           />
-          {!otpSent && (
+        </Stack>
+        
+        {form.email.trim().length > 0 && form.contactNumber.trim().length > 0 && (
+          <Stack direction="row" spacing={2} sx={{ width: '100%', mb: 1 }} alignItems="center">
+            <TextField
+              fullWidth
+              label="Enter OTP (Optional)"
+              value={form.otp}
+              onChange={(e) => setForm({ ...form, otp: e.target.value })}
+            />
             <Button
-              variant="contained"
-              color="secondary"
+              variant="outlined"
               onClick={handleSendOtp}
               sx={{ height: '56px', whiteSpace: 'nowrap' }}
             >
-              Send OTP
+              {otpSent ? 'Resend OTP' : 'Send OTP'}
             </Button>
-          )}
-        </Stack>
+          </Stack>
+        )}
 
-        <FormControl fullWidth margin="normal" disabled={otpSent}>
+        <FormControl fullWidth margin="normal">
           <InputLabel>Role</InputLabel>
           <Select
             value={form.role}
@@ -106,27 +107,15 @@ const Signup = () => {
           </Select>
         </FormControl>
 
-        {otpSent && (
-          <>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              label="Enter OTP"
-              value={form.otp}
-              onChange={(e) => setForm({ ...form, otp: e.target.value })}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-              onClick={handleSignup}
-            >
-              Verify & Sign Up
-            </Button>
-          </>
-        )}
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          sx={{ mt: 3, mb: 2 }}
+          onClick={handleSignup}
+        >
+          Sign Up
+        </Button>
         <Button onClick={() => navigate('/login')}>Already have an account? Login</Button>
       </Box>
     </Container>
