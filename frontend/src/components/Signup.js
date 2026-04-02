@@ -80,10 +80,6 @@ const Signup = () => {
   };
 
   const handleSignup = async () => {
-    if (!verifyStatus.email || !verifyStatus.contact) {
-      alert('Please verify both email and contact number before signing up.');
-      return;
-    }
     try {
       await axios.post('/auth/signup', form);
       localStorage.setItem('role', form.role);
@@ -140,21 +136,24 @@ const Signup = () => {
         
         {form.email.trim().length > 0 && form.contactNumber.trim().length > 0 && (
           <Box sx={{ width: '100%', mb: 1 }}>
+            <Typography variant="caption" color="primary" sx={{ mb: 1, display: 'block' }}>
+              OTP Verification is Optional - You can skip this and sign up directly.
+            </Typography>
             <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-              <Button variant="contained" onClick={handleSendEmailOtp} disabled={verifyStatus.email}>Send Email Verify OTP</Button>
+              <Button variant="contained" onClick={handleSendEmailOtp} disabled={verifyStatus.email}>Send Email OTP</Button>
               <TextField
                 fullWidth
-                label="Email OTP"
+                label="Email OTP (Optional)"
                 value={emailOtp}
                 onChange={(e) => setEmailOtp(e.target.value)}
               />
               <Button variant="outlined" onClick={handleVerifyEmail} disabled={verifyStatus.email}>Verify Email</Button>
             </Stack>
             <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-              <Button variant="contained" onClick={handleSendContactOtp} disabled={verifyStatus.contact}>Send SMS Verify OTP</Button>
+              <Button variant="contained" onClick={handleSendContactOtp} disabled={verifyStatus.contact}>Send SMS OTP</Button>
               <TextField
                 fullWidth
-                label="Contact OTP"
+                label="Contact OTP (Optional)"
                 value={contactOtp}
                 onChange={(e) => setContactOtp(e.target.value)}
               />

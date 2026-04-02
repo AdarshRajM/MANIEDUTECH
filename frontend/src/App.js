@@ -85,14 +85,7 @@ function App() {
             } />
           </Routes>
         </Router>
-        <Button 
-          variant="contained" 
-          color="primary"
-          sx={{ position: 'fixed', bottom: 18, right: 18, borderRadius: '50%', minWidth: '64px', minHeight: '64px', zIndex: 1000 }} 
-          onClick={() => window.location.href = '/chatbot'}
-        >
-          💬
-        </Button>
+        <Chatbot />
       </MuiThemeProvider>
     </TailwindThemeProvider>
   );

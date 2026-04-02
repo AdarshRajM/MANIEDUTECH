@@ -1,7 +1,7 @@
 import React from 'react';
 import axios from 'axios';
 import { 
-  Container, Typography, Box, Grid, Button, Stack, Paper, TextField, Alert 
+  Container, Typography, Box, Grid, Button, Stack, Paper, TextField, Alert, IconButton 
 } from '@mui/material';
 import { 
   School, Group, Assessment, Security, TrendingUp, Lock, Speed, Cloud 
@@ -237,8 +237,13 @@ const Home = () => {
       {/* Contact / Feedback Section */}
       <Container maxWidth="lg" sx={{ mb: 10 }}>
         <Box sx={{ p: 4, backgroundColor: '#fff', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', mb: 8 }}>
-          <Typography variant="h4" sx={{ fontWeight: 900, mb: 2 }}>Contact Us</Typography>
-          <Typography variant="body1" sx={{ mb: 3 }}>Fill this form to submit feedback or support request. We will email you at adarshrajmanii@gmail.com</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 900, mb: 2 }}>
+            Contact Us
+            <IconButton href="mailto:adarshrajmanii@gmail.com" color="primary" sx={{ ml: 1 }} title="Email Us Directly">
+              📧
+            </IconButton>
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 3 }}>Fill this form to submit feedback or support request.</Typography>
           {contactStatus && <Alert severity={contactStatus.startsWith('Thanks') ? 'success' : 'warning'} sx={{ mb: 2 }}>{contactStatus}</Alert>}
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}><TextField fullWidth label="Name" value={contactForm.name} onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })} /></Grid>
