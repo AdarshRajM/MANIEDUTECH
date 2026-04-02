@@ -5,6 +5,7 @@ import axios from 'axios';
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Forgot Password States
   const [forgotDialogOpen, setForgotDialogOpen] = useState(false);
@@ -36,16 +37,33 @@ const Login = () => {
       generateCaptcha();
       return;
     }
-    try {
-      const response = await axios.post('/auth/login', { username, password });
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('role', response.data.role || 'STUDENT');
-      localStorage.setItem('username', response.data.username || username);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      window.location.href = '/dashboard';
-    } catch (error) {
-      alert('Login failed: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+    setIsLoading(true);
+    let attempt = 0;
+    while (attempt < 3) {
+      try {
+        const response = await axios.post('/auth/login', { username, password });
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('role', response.data.role || 'STUDENT');
+        localStorage.setItem('username', response.data.username || username);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        window.location.href = '/dashboard';
+        return;
+      } catch (error) {
+        attempt += 1;
+        if (attempt >= 3) {
+          const message = error.response?.data?.message || error.message || 'Unknown error';
+          if (!window.navigator.onLine) {
+            alert('Network issue detected: please check your internet connection and retry.');
+          } else {
+            alert('Login failed: ' + message);
+          }
+          setIsLoading(false);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 700));
+      }
     }
+    setIsLoading(false);
   };
 
   const handleForgotSendOtp = async () => {
@@ -77,8 +95,8 @@ const Login = () => {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <Container maxWidth="sm" sx={{ mt: 6, p: 3, borderRadius: 3, boxShadow: 4, background: 'linear-gradient(135deg, #F1F8FF 0%, #E8F7F3 100%)' }}>
+      <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Typography component="h1" variant="h5">
           Sign in
         </Typography>
@@ -120,8 +138,9 @@ const Login = () => {
           variant="contained"
           sx={{ mt: 3, mb: 1 }}
           onClick={handleLogin}
+          disabled={isLoading}
         >
-          Sign In
+          {isLoading ? 'Signing In...' : 'Sign In'}
         </Button>
         <Button 
           fullWidth 

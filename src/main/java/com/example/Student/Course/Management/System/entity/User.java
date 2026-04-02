@@ -25,7 +25,13 @@ public class User implements UserDetails {
 
     private String email;
 
+    private boolean emailVerified = false;
+
     private String contactNumber;
+
+    private boolean contactVerified = false;
+
+    private java.time.LocalDateTime lastActive;
 
     private String password;
 

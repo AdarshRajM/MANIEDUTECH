@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Container, Typography, Card, CardContent, TextField, Button, Box, List, ListItem, ListItemText, Stack } from '@mui/material';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Container, Typography, Card, CardContent, TextField, Button, Box, List, ListItem, ListItemText, Stack, Alert } from '@mui/material';
 import axios from 'axios';
 
 const SectionLearning = () => {
@@ -8,6 +8,10 @@ const SectionLearning = () => {
   const [materials, setMaterials] = useState([]);
   const [live, setLive] = useState([]);
   const [chat, setChat] = useState('');
+  const [activeVideo, setActiveVideo] = useState(null);
+  const [warning, setWarning] = useState('');
+  const [switchCount, setSwitchCount] = useState(0);
+  const videoAreaRef = useRef(null);
   const [chatLog, setChatLog] = useState([]);
   const [newLive, setNewLive] = useState({ title: '', scheduledAt: '', meetingLink: '', description: '', section });
   const [activeMeeting, setActiveMeeting] = useState(null);
@@ -58,6 +62,39 @@ const SectionLearning = () => {
     fetchChat();
   }, [fetchMaterials, fetchLive, fetchChat]);
 
+  useEffect(() => {
+    const handleCopy = (ev) => {
+      ev.preventDefault();
+      ev.clipboardData.setData('text/plain', 'Copy is disabled here');
+      setWarning('Copy is disabled during tests.');
+      axios.post('/sections/activity/monitor', { event: 'copy_attempt', details: 'copy blocked' }).catch(() => {});
+    };
+    const handlePaste = (ev) => {
+      ev.preventDefault();
+      setWarning('Paste is disabled during tests.');
+      axios.post('/sections/activity/monitor', { event: 'paste_attempt', details: 'paste blocked' }).catch(() => {});
+    };
+    window.addEventListener('copy', handleCopy);
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('copy', handleCopy);
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') {
+        const next = switchCount + 1;
+        setSwitchCount(next);
+        setWarning(`You switched away from test/video area ${next} times. Stay focused to avoid lock.`);
+        axios.post('/sections/activity/monitor', { event: 'window_switch', details: `count=${next}` }).catch(() => {});
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibility);
+    return () => window.removeEventListener('visibilitychange', handleVisibility);
+  }, [switchCount]);
+
   const scheduleLiveClass = async () => {
     if (!newLive.title.trim() || !newLive.scheduledAt || !newLive.meetingLink.trim()) {
       alert('Please fill title, date/time, and meeting link.');
@@ -98,6 +135,20 @@ const SectionLearning = () => {
       alert('Raise hand sent.');
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const watchVideo = async (material) => {
+    try {
+      await axios.post(`/sections/materials/${material.id}/watch`);
+      setActiveVideo(material);
+      setWarning('Video in fullscreen. Please do not switch windows while watching.');
+      if (videoAreaRef.current && videoAreaRef.current.requestFullscreen) {
+        videoAreaRef.current.requestFullscreen().catch(() => {});
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Unable to record video watch.');
     }
   };
 
@@ -181,13 +232,35 @@ const SectionLearning = () => {
         </CardContent>
       </Card>
 
+      {warning && <Alert severity="warning" sx={{ mb: 2 }}>{warning}</Alert>}
+      {activeVideo && (
+        <Card sx={{ mb: 2 }} ref={videoAreaRef}>
+          <CardContent>
+            <Typography variant="h6">Watching: {activeVideo.title}</Typography>
+            <Box sx={{ mt: 1, position: 'relative', width: '100%', height: 0, paddingBottom: '56.25%' }}>
+              <iframe
+                src={activeVideo.contentUrl}
+                title={activeVideo.title}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                allow="autoplay; fullscreen; camera; microphone"
+              />
+            </Box>
+            {switchCount > 0 && <Typography color="error" sx={{ mt: 2 }}>Window switch detected {switchCount} times. Repeated switches may lead to temporary lock by admin.</Typography>}
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardContent>
           <Typography variant="h6">Materials</Typography>
           <List>
             {materials.length === 0 ? <Typography>No materials.</Typography> : materials.map((m) => (
-              <ListItem key={m.id}>
+              <ListItem key={m.id} sx={{ justifyContent: 'space-between' }}>
                 <ListItemText primary={`${m.materialType}: ${m.title}`} secondary={m.contentUrl || m.description || 'No URL'} />
+                {m.materialType === 'VIDEO' ? (
+                  <Button variant="outlined" size="small" onClick={() => watchVideo(m)}>
+                    Watch Video
+                  </Button>
+                ) : null}
               </ListItem>
             ))}
           </List>

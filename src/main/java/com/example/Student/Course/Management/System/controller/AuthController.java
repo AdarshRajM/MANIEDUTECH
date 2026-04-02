@@ -60,9 +60,12 @@ public class AuthController {
 
         Optional<User> userOpt = userRepository.findByUsername(username);
         if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setLastActive(java.time.LocalDateTime.now());
+            userRepository.save(user);
             activityService.logActivity(username, "LOGIN", "User logged in");
             String token = jwtUtil.generateToken(authentication);
-            String role = userOpt.get().getRole().getName();
+            String role = user.getRole().getName();
             return Map.of("token", token, "role", role, "username", username);
         }
 
@@ -175,5 +178,55 @@ public class AuthController {
         activityService.logActivity(user.getUsername(), "PASSWORD_RESET", "User reset password via OTP");
 
         return Map.of("message", "Password reset successfully");
+    }
+
+    @PostMapping("/verify/email/send-otp")
+    public Map<String, String> sendEmailVerifyOtp(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("User not found");
+        }
+        otpService.generateOtp(username + "_email");
+        return Map.of("message", "Email verification OTP generated (mocked in console)");
+    }
+
+    @PostMapping("/verify/email")
+    public Map<String, String> verifyEmail(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String otp = request.get("otp");
+        if (!otpService.validateOtp(username + "_email", otp)) {
+            throw new RuntimeException("Invalid or expired email OTP");
+        }
+        User user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("User not found"));
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        activityService.logActivity(username, "VERIFY_EMAIL", "User verified email");
+        return Map.of("message", "Email verified");
+    }
+
+    @PostMapping("/verify/contact/send-otp")
+    public Map<String, String> sendContactVerifyOtp(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("User not found");
+        }
+        otpService.generateOtp(username + "_contact");
+        return Map.of("message", "Contact verification OTP generated (mocked in console)");
+    }
+
+    @PostMapping("/verify/contact")
+    public Map<String, String> verifyContact(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String otp = request.get("otp");
+        if (!otpService.validateOtp(username + "_contact", otp)) {
+            throw new RuntimeException("Invalid or expired contact OTP");
+        }
+        User user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("User not found"));
+        user.setContactVerified(true);
+        userRepository.save(user);
+        activityService.logActivity(username, "VERIFY_CONTACT", "User verified contact number");
+        return Map.of("message", "Contact number verified");
     }
 }

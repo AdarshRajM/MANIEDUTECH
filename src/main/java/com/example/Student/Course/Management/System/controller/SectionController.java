@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -21,19 +22,25 @@ public class SectionController {
     private final SectionAssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
+    private final ActivityRepository activityRepository;
+    private final com.example.Student.Course.Management.System.service.ActivityService activityService;
 
     public SectionController(SectionMaterialRepository materialRepository,
                              SectionChatRepository chatRepository,
                              LiveClassRepository liveClassRepository,
                              SectionAssignmentRepository assignmentRepository,
                              UserRepository userRepository,
-                             StudentRepository studentRepository) {
+                             StudentRepository studentRepository,
+                             ActivityRepository activityRepository,
+                             com.example.Student.Course.Management.System.service.ActivityService activityService) {
         this.materialRepository = materialRepository;
         this.chatRepository = chatRepository;
         this.liveClassRepository = liveClassRepository;
         this.assignmentRepository = assignmentRepository;
         this.userRepository = userRepository;
         this.studentRepository = studentRepository;
+        this.activityRepository = activityRepository;
+        this.activityService = activityService;
     }
 
     @PreAuthorize("hasRole('FACULTY') or hasRole('PRINCIPAL')")
@@ -78,6 +85,43 @@ public class SectionController {
         message.setSender(authentication.getName());
         message.setRole(authentication.getAuthorities().stream().findFirst().map(Object::toString).orElse("UNKNOWN"));
         return chatRepository.save(message);
+    }
+
+    @PreAuthorize("hasRole('STUDENT')")
+    @PostMapping("/materials/{id}/watch")
+    public String trackVideoWatch(@PathVariable Long id, Authentication authentication) {
+        Optional<SectionMaterial> materialOpt = materialRepository.findById(id);
+        if (materialOpt.isEmpty()) {
+            throw new RuntimeException("Material not found");
+        }
+        SectionMaterial material = materialOpt.get();
+        if (!"VIDEO".equalsIgnoreCase(material.getMaterialType())) {
+            throw new RuntimeException("Material is not a video");
+        }
+        String username = authentication.getName();
+        activityService.logActivity(username, "VIDEO_WATCH", "MaterialId=" + id + ";Title=" + material.getTitle());
+        return "Watch recorded";
+    }
+
+    @PreAuthorize("hasRole('FACULTY') or hasRole('PRINCIPAL')")
+    @GetMapping("/materials/{id}/viewers")
+    public List<String> getVideoViewers(@PathVariable Long id) {
+        List<Activity> watchers = activityRepository.findByAction("VIDEO_WATCH");
+        return watchers.stream()
+                .filter(a -> a.getDetails().contains("MaterialId=" + id))
+                .map(Activity::getUsername)
+                .distinct()
+                .toList();
+    }
+
+    @PreAuthorize("hasRole('STUDENT')")
+    @PostMapping("/activity/monitor")
+    public String monitorAssessmentActivity(@RequestBody Map<String, String> payload, Authentication authentication) {
+        String username = authentication.getName();
+        String event = payload.getOrDefault("event", "UNKNOWN");
+        String details = payload.getOrDefault("details", "");
+        activityService.logActivity(username, "MONITOR_" + event.toUpperCase(), details);
+        return "ok";
     }
 
     @PreAuthorize("hasRole('STUDENT') or hasRole('FACULTY') or hasRole('PRINCIPAL')")
@@ -127,5 +171,15 @@ public class SectionController {
     @GetMapping("/assignments")
     public List<SectionAssignment> getAssignments() {
         return assignmentRepository.findAll();
+    }
+
+    @PreAuthorize("hasRole('PRINCIPAL') or hasRole('FACULTY')")
+    @GetMapping("/students/online")
+    public List<String> getOnlineStudents() {
+        java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusMinutes(20);
+        return userRepository.findByRole_NameAndLastActiveAfter("STUDENT", threshold)
+                .stream()
+                .map(User::getUsername)
+                .toList();
     }
 }
