@@ -10,6 +10,8 @@ import com.example.Student.Course.Management.System.service.ActivityService;
 import com.example.Student.Course.Management.System.service.OtpService;
 import com.example.Student.Course.Management.System.service.StudentService;
 import com.example.Student.Course.Management.System.util.JwtUtil;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -32,12 +34,13 @@ public class AuthController {
     private final StudentRepository studentRepository;
     private final StudentService studentService;
     private final OtpService otpService;
+    private final JavaMailSender mailSender;
 
     public AuthController(AuthenticationManager authenticationManager, JwtUtil jwtUtil,
                           UserRepository userRepository, RoleRepository roleRepository,
                           PasswordEncoder passwordEncoder, ActivityService activityService,
                           StudentRepository studentRepository, StudentService studentService,
-                          OtpService otpService) {
+                          OtpService otpService, JavaMailSender mailSender) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
@@ -47,6 +50,7 @@ public class AuthController {
         this.studentRepository = studentRepository;
         this.studentService = studentService;
         this.otpService = otpService;
+        this.mailSender = mailSender;
     }
 
     @PostMapping("/login")
@@ -228,5 +232,32 @@ public class AuthController {
         userRepository.save(user);
         activityService.logActivity(username, "VERIFY_CONTACT", "User verified contact number");
         return Map.of("message", "Contact number verified");
+    }
+
+    @PostMapping("/contact")
+    public Map<String, String> submitContact(@RequestBody Map<String, String> request) {
+        String name = request.getOrDefault("name", "Anonymous");
+        String email = request.get("email");
+        String subject = request.getOrDefault("subject", "General Inquiry");
+        String message = request.getOrDefault("message", "No details provided.");
+
+        if (email == null || email.trim().isEmpty() || message.trim().isEmpty()) {
+            throw new RuntimeException("Email and message are required");
+        }
+
+        activityService.logActivity(name, "CONTACT_FORM_SUBMITTED", "subject=" + subject + ", email=" + email);
+
+        try {
+            SimpleMailMessage mail = new SimpleMailMessage();
+            mail.setTo("adarshrajmanii@gmail.com");
+            mail.setSubject("[MANIEDUTECH Contact] " + subject);
+            mail.setText("Name: " + name + "\nEmail: " + email + "\n\nMessage:\n" + message);
+            mailSender.send(mail);
+            return Map.of("message", "Contact request submitted successfully");
+        } catch (Exception e) {
+            // Fallback: send may fail if mail config is missing; log and keep user flow working.
+            System.out.println("Contact email send failed: " + e.getMessage());
+            return Map.of("message", "Contact request captured; admin will follow up soon.");
+        }
     }
 }

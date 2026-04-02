@@ -30,6 +30,17 @@ const FacultyPortal = () => {
     }
   };
 
+  const [onlineStudents, setOnlineStudents] = useState([]);
+  const fetchOnlineStudents = async () => {
+    try {
+      const res = await axios.get('/sections/students/online');
+      setOnlineStudents(res.data);
+    } catch (e) {
+      console.error(e);
+      alert('Unable to load online students.');
+    }
+  };
+
   return (
     <Container sx={{ py: 4 }}>
       <Typography variant="h4" gutterBottom>Faculty / Principal Portal</Typography>
@@ -59,6 +70,23 @@ const FacultyPortal = () => {
         <TextField fullWidth label="Date/Time (ISO)" value={liveTime} onChange={(e) => setLiveTime(e.target.value)} sx={{ my: 1 }} />
         <TextField fullWidth label="Meeting Link" value={meetLink} onChange={(e) => setMeetLink(e.target.value)} sx={{ my: 1 }} />
         <Button variant="contained" onClick={scheduleLive}>Schedule</Button>
+      </Box>
+
+      <Divider sx={{ my: 3 }} />
+
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6">Live Online Students</Typography>
+        <Typography variant="body2" sx={{ mb: 2 }}>Track currently active students (last 20 minutes).</Typography>
+        <Button variant="outlined" onClick={fetchOnlineStudents} sx={{ mb: 2 }}>Refresh Online Students</Button>
+        {onlineStudents.length === 0 ? (
+          <Typography>No students online right now.</Typography>
+        ) : (
+          <ul>
+            {onlineStudents.map((student) => (
+              <li key={student}>{student}</li>
+            ))}
+          </ul>
+        )}
       </Box>
     </Container>
   );

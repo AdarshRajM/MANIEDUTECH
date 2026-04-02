@@ -6,7 +6,6 @@ import { Button } from '@mui/material';
 import axios from 'axios';
 import { ThemeProvider as TailwindThemeProvider } from './context/ThemeContext';
 import Layout from './components/Layout';
-import CustomCursor from './components/CustomCursor';
 
 // Lazy loading all components for code splitting & better performance
 const Home = lazy(() => import('./components/Home'));
@@ -56,7 +55,6 @@ function App() {
     <TailwindThemeProvider>
       <MuiThemeProvider theme={muiTheme}>
         <CssBaseline />
-        <CustomCursor />
         <Router>
           <Routes>
             {/* Public Routes without Sidebar */}

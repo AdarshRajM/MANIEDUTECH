@@ -1,6 +1,7 @@
 import React from 'react';
+import axios from 'axios';
 import { 
-  Container, Typography, Box, Grid, Button, Stack, Paper 
+  Container, Typography, Box, Grid, Button, Stack, Paper, TextField, Alert 
 } from '@mui/material';
 import { 
   School, Group, Assessment, Security, TrendingUp, Lock, Speed, Cloud 
@@ -9,6 +10,23 @@ import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
   const navigate = useNavigate();
+  const [contactForm, setContactForm] = React.useState({ name: '', email: '', subject: '', message: '' });
+  const [contactStatus, setContactStatus] = React.useState('');
+
+  const handleContactSubmit = async () => {
+    if (!contactForm.name || !contactForm.email || !contactForm.message) {
+      setContactStatus('Please complete name, email and message');
+      return;
+    }
+    try {
+      await axios.post('/auth/contact', contactForm);
+      setContactStatus('Thanks! Your message is sent and administrator will follow-up soon.');
+      setContactForm({ name: '', email: '', subject: '', message: '' });
+    } catch (err) {
+      console.error(err);
+      setContactStatus('Cannot submit now. Please retry later.');
+    }
+  };
 
   return (
     <Box sx={{ overflowX: 'hidden' }}>
@@ -200,6 +218,21 @@ const Home = () => {
         </Container>
       </Box>
 
+      {/* Contact / Feedback Section */}
+      <Container maxWidth="lg" sx={{ mb: 10 }}>
+        <Box sx={{ p: 4, backgroundColor: '#fff', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', mb: 8 }}>
+          <Typography variant="h4" sx={{ fontWeight: 900, mb: 2 }}>Contact Us</Typography>
+          <Typography variant="body1" sx={{ mb: 3 }}>Fill this form to submit feedback or support request. We will email you at adarshrajmanii@gmail.com</Typography>
+          {contactStatus && <Alert severity={contactStatus.startsWith('Thanks') ? 'success' : 'warning'} sx={{ mb: 2 }}>{contactStatus}</Alert>}
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}><TextField fullWidth label="Name" value={contactForm.name} onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })} /></Grid>
+            <Grid item xs={12} md={6}><TextField fullWidth label="Email" value={contactForm.email} onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })} /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="Subject" value={contactForm.subject} onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })} /></Grid>
+            <Grid item xs={12}><TextField fullWidth multiline minRows={4} label="Message" value={contactForm.message} onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })} /></Grid>
+            <Grid item xs={12}><Button variant="contained" onClick={handleContactSubmit}>Submit Contact Request</Button></Grid>
+          </Grid>
+        </Box>
+      </Container>
       {/* CTA Section */}
       <Container maxWidth="lg" sx={{ mb: 10 }}>
         <Box className="animated-bg" sx={{

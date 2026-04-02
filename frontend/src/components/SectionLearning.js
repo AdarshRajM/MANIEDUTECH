@@ -11,6 +11,9 @@ const SectionLearning = () => {
   const [activeVideo, setActiveVideo] = useState(null);
   const [warning, setWarning] = useState('');
   const [switchCount, setSwitchCount] = useState(0);
+  const [screenSwitchCount, setScreenSwitchCount] = useState(0);
+  const [examLock, setExamLock] = useState(false);
+  const [trackingEvents, setTrackingEvents] = useState([]);
   const videoAreaRef = useRef(null);
   const [chatLog, setChatLog] = useState([]);
   const [newLive, setNewLive] = useState({ title: '', scheduledAt: '', meetingLink: '', description: '', section });
@@ -83,6 +86,82 @@ const SectionLearning = () => {
   }, []);
 
   useEffect(() => {
+    const handleExamEvent = (eventName, detail) => {
+      if (examLock) {
+        return;
+      }
+      setTrackingEvents((prev) => [...prev, { event: eventName, detail, ts: Date.now() }]);
+      axios.post('/sections/activity/monitor', { event: eventName, details: detail }).catch(() => {});
+      if (eventName === 'window_switch') {
+        const next = screenSwitchCount + 1;
+        setScreenSwitchCount(next);
+        setWarning(`Window switch detected ${next} times. Keep focus. Once 3+ switches happen your session will lock.`);
+        if (next >= 3) {
+          setExamLock(true);
+          setWarning('Exam locked due to repeated window switching. Contact admin.');
+          axios.post('/sections/exam/lock', { reason: 'frequent_window_switch' }).catch(() => {});
+        }
+      }
+      if (eventName === 'fullscreen_exit' || eventName === 'escape_pressed') {
+        setExamLock(true);
+        setWarning('Exam locked due to fullscreen exit or ESC key usage. Contact admin.');
+        axios.post('/sections/exam/lock', { reason: eventName }).catch(() => {});
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (examLock) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleExamEvent('escape_pressed', 'User pressed Escape in exam mode');
+        return;
+      }
+      if (e.altKey && e.key === 'Tab') {
+        e.preventDefault();
+        handleExamEvent('app_switch_try', 'Alt+Tab pressed');
+        return;
+      }
+      if ((e.ctrlKey && e.key.toLowerCase() === 'tab') || e.key === 'F11') {
+        e.preventDefault();
+        handleExamEvent('app_switch_try', `${e.key} pressed`);
+      }
+    };
+
+    const handleBlur = () => {
+      if (examLock) return;
+      handleExamEvent('window_switch', `blur event state=${document.visibilityState}`);
+    };
+
+    const handleFullscreenChange = () => {
+      const active = !!document.fullscreenElement;
+      if (!active && !examLock && activeVideo) {
+        handleExamEvent('fullscreen_exit', 'Fullscreen exited during exam video');
+      }
+    };
+
+    const handleBeforeUnload = (e) => {
+      if (!examLock) {
+        const message = 'Exiting this page during exam may be considered cheating. Continue?';
+        e.returnValue = message;
+        return message;
+      }
+      return null;
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('blur', handleBlur);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [examLock, screenSwitchCount, activeVideo]);
+
+  useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState !== 'visible') {
         const next = switchCount + 1;
@@ -139,6 +218,10 @@ const SectionLearning = () => {
   };
 
   const watchVideo = async (material) => {
+    if (examLock) {
+      alert('Exam is locked due to policy violation. Contact administrator.');
+      return;
+    }
     try {
       await axios.post(`/sections/materials/${material.id}/watch`);
       setActiveVideo(material);
@@ -156,6 +239,10 @@ const SectionLearning = () => {
     <Container sx={{ py: 4 }}>
       <Typography variant="h4" gutterBottom>Section Learning</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Welcome {user.username || 'Guest'} ({user.role || 'N/A'})</Typography>
+      <Alert severity="info" sx={{ mb: 2 }}>
+        Exam Mode: 1) AI assistance disabled by policy 2) Copy/paste blocked 3) Window switch, ESC, screen-share triggers lock.
+      </Alert>
+      {examLock && <Alert severity="error" sx={{ mb: 2 }}>Exam locked due to violation. Contact faculty immediately.</Alert>}
       <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
         <TextField label="Section" value={section} onChange={(e) => setSection(e.target.value)} size="small" />
         <Button variant="contained" onClick={() => { localStorage.setItem('section', section); fetchMaterials(); fetchLive(); fetchChat(); }}>Refresh</Button>

@@ -11,6 +11,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/sections")
@@ -24,6 +26,7 @@ public class SectionController {
     private final StudentRepository studentRepository;
     private final ActivityRepository activityRepository;
     private final com.example.Student.Course.Management.System.service.ActivityService activityService;
+    private final Set<String> lockedExamUsers = ConcurrentHashMap.newKeySet();
 
     public SectionController(SectionMaterialRepository materialRepository,
                              SectionChatRepository chatRepository,
@@ -118,10 +121,57 @@ public class SectionController {
     @PostMapping("/activity/monitor")
     public String monitorAssessmentActivity(@RequestBody Map<String, String> payload, Authentication authentication) {
         String username = authentication.getName();
+        if (lockedExamUsers.contains(username)) {
+            return "locked";
+        }
+
         String event = payload.getOrDefault("event", "UNKNOWN");
         String details = payload.getOrDefault("details", "");
         activityService.logActivity(username, "MONITOR_" + event.toUpperCase(), details);
-        return "ok";
+
+        if (event.equalsIgnoreCase("window_switch")) {
+            int count = 1;
+            try {
+                if (details.contains("count=")) {
+                    count = Integer.parseInt(details.split("count=")[1]);
+                }
+            } catch (Exception ignored) {}
+            if (count >= 3) {
+                lockedExamUsers.add(username);
+            }
+        }
+
+        if (event.equalsIgnoreCase("fullscreen_exit") || event.equalsIgnoreCase("escape_pressed") || event.equalsIgnoreCase("app_switch_try")) {
+            lockedExamUsers.add(username);
+        }
+
+        return lockedExamUsers.contains(username) ? "locked" : "ok";
+    }
+
+    @PreAuthorize("hasRole('STUDENT')")
+    @GetMapping("/exam/lock-status")
+    public Map<String, Object> getExamLockStatus(Authentication authentication) {
+        String username = authentication.getName();
+        boolean locked = lockedExamUsers.contains(username);
+        return Map.of("locked", locked, "reason", locked ? "policy_violation" : "none");
+    }
+
+    @PreAuthorize("hasRole('STUDENT')")
+    @PostMapping("/exam/lock")
+    public Map<String, String> lockExam(@RequestBody Map<String, String> payload, Authentication authentication) {
+        String username = authentication.getName();
+        String reason = payload.getOrDefault("reason", "manual_lock");
+        lockedExamUsers.add(username);
+        activityService.logActivity(username, "EXAM_LOCKED", reason);
+        return Map.of("status", "locked", "reason", reason);
+    }
+
+    @PreAuthorize("hasRole('FACULTY') or hasRole('PRINCIPAL')")
+    @PostMapping("/exam/unlock")
+    public String unlockExam(@RequestBody Map<String, String> payload) {
+        String user = payload.get("username");
+        lockedExamUsers.remove(user);
+        return "unlocked";
     }
 
     @PreAuthorize("hasRole('STUDENT') or hasRole('FACULTY') or hasRole('PRINCIPAL')")
