@@ -18,8 +18,24 @@ const Home = () => {
       setContactStatus('Please complete name, email and message');
       return;
     }
+    
+    // Set a loading state to show processing
+    setContactStatus('Sending your message...');
+    
     try {
-      await axios.post('/auth/contact', contactForm);
+      // Use FormSubmit API to send email directly without backend setup
+      await axios.post('https://formsubmit.co/ajax/adarshrajmanii@gmail.com', {
+        name: contactForm.name,
+        email: contactForm.email,
+        subject: contactForm.subject || 'New Contact Request from MANIEDUTECH',
+        message: contactForm.message
+      }, {
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+      });
+      
       setContactStatus('Thanks! Your message is sent and administrator will follow-up soon.');
       setContactForm({ name: '', email: '', subject: '', message: '' });
     } catch (err) {
