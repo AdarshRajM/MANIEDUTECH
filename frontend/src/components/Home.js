@@ -86,6 +86,26 @@ const Home = () => {
         `}
       </style>
 
+      {/* Announcements Banner */}
+      {(() => {
+        const adsStr = localStorage.getItem('platform_ads');
+        if (adsStr) {
+          try {
+            const ads = JSON.parse(adsStr);
+            if (ads.length > 0) {
+              return (
+                <Box sx={{ width: '100%', bgcolor: '#ff4b4b', color: 'white', py: 1, zIndex: 50, position: 'relative', overflow: 'hidden' }}>
+                  <marquee scrollamount="8" style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                    {ads.map(ad => `📢 ${ad.text}`).join('   |   ')}
+                  </marquee>
+                </Box>
+              );
+            }
+          } catch (e) {}
+        }
+        return null;
+      })()}
+
       {/* Hero Section */}
       <Box className="animated-bg" sx={{
         color: 'white',

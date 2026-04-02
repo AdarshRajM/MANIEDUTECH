@@ -8,6 +8,8 @@ import {
     Menu, Close, ExitToApp
 } from '@mui/icons-material';
 
+import ThreeBackground from './ThreeBackground';
+
 const Layout = ({ children }) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -38,13 +40,13 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300 overflow-hidden">
-      
+    <div className="flex h-screen bg-transparent text-gray-900 dark:text-gray-100 font-sans overflow-hidden">
+      <ThreeBackground />
       {/* Sidebar */}
       <motion.div 
         initial={{ width: 260 }}
         animate={{ width: sidebarOpen ? 260 : 80 }}
-        className="h-full bg-white dark:bg-gray-800 shadow-xl z-20 flex flex-col justify-between hidden md:flex"
+        className="h-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-md shadow-xl z-20 flex flex-col justify-between hidden md:flex border-r border-gray-200/50 dark:border-gray-700/50"
       >
         <div>
           <div className="h-16 flex items-center justify-center border-b border-gray-200 dark:border-gray-700">
@@ -64,8 +66,8 @@ const Layout = ({ children }) => {
                 className={({ isActive }) => 
                   `flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 ${
                     isActive 
-                      ? 'bg-blue-500 text-white shadow-md' 
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
+                      ? 'bg-blue-500/90 text-white shadow-md backdrop-blur-sm' 
+                      : 'hover:bg-gray-100/50 dark:hover:bg-gray-700/50 text-gray-600 dark:text-gray-300'
                   }`
                 }
               >
@@ -75,7 +77,7 @@ const Layout = ({ children }) => {
             ))}
           </div>
         </div>
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-colors" onClick={handleLogout}>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-red-50/50 dark:hover:bg-red-900/20 text-red-500 transition-colors" onClick={handleLogout}>
             <div className={`flex items-center ${sidebarOpen ? 'space-x-3' : 'justify-center'} p-2 rounded-xl`}>
                 <ExitToApp />
                 {sidebarOpen && <span className="font-medium">Logout</span>}
@@ -84,12 +86,12 @@ const Layout = ({ children }) => {
       </motion.div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden z-10">
         
         {/* Header */}
-        <header className="h-16 bg-white dark:bg-gray-800 shadow-sm z-10 flex items-center justify-between px-6 transition-colors duration-300">
+        <header className="h-16 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-sm flex items-center justify-between px-6 transition-colors duration-300 border-b border-gray-200/50 dark:border-gray-700/50">
           <div className="flex items-center space-x-4">
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-full hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition">
               <Menu />
             </button>
             <h2 className="text-xl font-semibold hidden sm:block">Welcome back, {username}</h2>
@@ -98,7 +100,7 @@ const Layout = ({ children }) => {
           <div className="flex items-center space-x-4">
             
             {/* Theme Toggle */}
-            <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+            <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition">
               {isDarkMode ? <Brightness7 className="text-yellow-400" /> : <Brightness4 className="text-gray-600" />}
             </button>
 
@@ -106,7 +108,7 @@ const Layout = ({ children }) => {
             <div className="relative">
               <button 
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition relative"
+                className="p-2 rounded-full hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition relative"
               >
                 <Notifications />
                 <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
@@ -156,9 +158,8 @@ const Layout = ({ children }) => {
         </header>
 
         {/* Dynamic Page Content */}
-        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-6 relative">
+        <main className="flex-1 overflow-auto bg-gray-50/40 dark:bg-gray-900/40 backdrop-blur-md p-6 relative">
           <AnimatePresence mode="wait">
-             {/* Skeletons can be injected per page in children, but here we provide Framer Motion page wrap */}
              <motion.div
                key={window.location.pathname}
                initial={{ opacity: 0, y: 20 }}

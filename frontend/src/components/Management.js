@@ -89,6 +89,26 @@ const Management = () => {
             <Button variant="contained" sx={{ mt: 2 }} onClick={handleAddMarks}>Update Marks</Button>
           </Paper>
         </Grid>
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>Platform Announcements</Typography>
+            <TextField fullWidth label="Announcement Text" margin="dense" multiline rows={3} id="announcementInput" />
+            <Button variant="contained" sx={{ mt: 2 }} color="warning" onClick={() => {
+              const text = document.getElementById('announcementInput').value;
+              if (text.trim()) {
+                const ads = JSON.parse(localStorage.getItem('platform_ads') || '[]');
+                ads.push({ id: Date.now(), text, active: true });
+                localStorage.setItem('platform_ads', JSON.stringify(ads));
+                setMessage('Announcement broadcasted to Home page!');
+                document.getElementById('announcementInput').value = '';
+              }
+            }}>Broadcast to Home</Button>
+            <Button variant="outlined" sx={{ mt: 2, ml: 1 }} color="error" onClick={() => {
+              localStorage.removeItem('platform_ads');
+              setMessage('All announcements cleared.');
+            }}>Clear All</Button>
+          </Paper>
+        </Grid>
       </Grid>
     </Container>
   );

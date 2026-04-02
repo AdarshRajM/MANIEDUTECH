@@ -30,6 +30,12 @@ const Chatbot = () => {
     if (open) scrollToBottom();
   }, [messages, open]);
 
+  useEffect(() => {
+    const handleOpen = () => setOpen(true);
+    window.addEventListener('open-chatbot', handleOpen);
+    return () => window.removeEventListener('open-chatbot', handleOpen);
+  }, []);
+
   const ask = async () => {
     if (!query.trim()) return;
     const userMsg = query;

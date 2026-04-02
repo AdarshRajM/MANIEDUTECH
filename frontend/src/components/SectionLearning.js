@@ -1,358 +1,291 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Container, Typography, Card, CardContent, TextField, Button, Box, List, ListItem, ListItemText, Stack, Alert } from '@mui/material';
+import { Container, Typography, Card, CardContent, TextField, Button, Box, List, ListItem, ListItemText, Stack, Alert, Paper } from '@mui/material';
 import axios from 'axios';
+import * as tf from '@tensorflow/tfjs';
+import * as blazeface from '@tensorflow-models/blazeface';
 
 const SectionLearning = () => {
   const [user, setUser] = useState({ username: '', role: '' });
   const [section, setSection] = useState(localStorage.getItem('section') || 'A');
   const [materials, setMaterials] = useState([]);
-  const [live, setLive] = useState([]);
-  const [chat, setChat] = useState('');
   const [activeVideo, setActiveVideo] = useState(null);
+  
+  // Proctoring State
   const [warning, setWarning] = useState('');
   const [switchCount, setSwitchCount] = useState(0);
-  const [screenSwitchCount, setScreenSwitchCount] = useState(0);
   const [examLock, setExamLock] = useState(false);
-  const [trackingEvents, setTrackingEvents] = useState([]);
-  const videoAreaRef = useRef(null);
-  const [chatLog, setChatLog] = useState([]);
-  const [newLive, setNewLive] = useState({ title: '', scheduledAt: '', meetingLink: '', description: '', section });
-  const [activeMeeting, setActiveMeeting] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [isModelLoaded, setIsModelLoaded] = useState(false);
+  const [model, setModel] = useState(null);
+  const streamRef = useRef(null);
+  const [proctoringActive, setProctoringActive] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     try {
       const res = await axios.get('/auth/me');
       setUser({ username: res.data.username, role: res.data.role });
-    } catch (err) {
-      console.error('Cannot fetch profile', err);
-    }
+    } catch (err) {}
   }, []);
 
   const fetchMaterials = useCallback(async () => {
     try {
       const res = await axios.get(`/sections/materials/section/${section}`);
       setMaterials(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  }, [section]);
-
-  const fetchLive = useCallback(async () => {
-    try {
-      const res = await axios.get(`/sections/live/${section}`);
-      setLive(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  }, [section]);
-
-  const fetchChat = useCallback(async () => {
-    try {
-      const res = await axios.get(`/sections/chat/${section}`);
-      setChatLog(res.data);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) {}
   }, [section]);
 
   useEffect(() => {
     fetchProfile();
-  }, [fetchProfile]);
-
-  useEffect(() => {
     fetchMaterials();
-    fetchLive();
-    fetchChat();
-  }, [fetchMaterials, fetchLive, fetchChat]);
+  }, [fetchProfile, fetchMaterials]);
 
+  // Load ML Model
+  useEffect(() => {
+    const loadModel = async () => {
+      try {
+        await tf.ready();
+        const loadedModel = await blazeface.load();
+        setModel(loadedModel);
+        setIsModelLoaded(true);
+      } catch (err) {
+        console.error("Failed to load ML model", err);
+      }
+    };
+    loadModel();
+  }, []);
+
+  const startProctoring = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Camera API not supported.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      streamRef.current = stream;
+      setProctoringActive(true);
+      
+      try {
+        if (document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+        }
+      } catch(e) {}
+      
+      logAction('PROCTOR_START', 'User started ML proctored session');
+    } catch (err) {
+      alert("Camera permission denied. Cannot start exam.");
+    }
+  };
+
+  const stopProctoring = async () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+    }
+    setProctoringActive(false);
+    if (document.fullscreenElement) {
+        try { await document.exitFullscreen(); } catch(e){}
+    }
+    logAction('PROCTOR_END', 'User ended proctored session');
+  };
+
+  const logAction = (eventType, details) => {
+      axios.post('/api/tracking', {
+          username: user.username || 'unknown',
+          event: eventType,
+          details: details
+      }).catch(()=>{}); // Send to MongoDB backend quietly
+  };
+
+  // ML Detection Loop
+  useEffect(() => {
+    let intervalId;
+    if (proctoringActive && isModelLoaded && model && videoRef.current) {
+      intervalId = setInterval(async () => {
+        if (!examLock && videoRef.current.readyState === 4) {
+          const predictions = await model.estimateFaces(videoRef.current, false);
+          
+          if (predictions.length === 0) {
+              handleViolation('Face Not Detected. Please look at the screen.');
+          } else if (predictions.length > 1) {
+              handleViolation('Multiple faces detected! No cheating allowed.');
+          }
+        }
+      }, 3000); // Check every 3 seconds
+    }
+    return () => clearInterval(intervalId);
+  }, [proctoringActive, isModelLoaded, model, examLock]);
+
+  const handleViolation = (msg) => {
+      setSwitchCount(prev => {
+          const next = prev + 1;
+          setWarning(`${msg} (Warning ${next}/3)`);
+          logAction('VIOLATION', `Count: ${next}, Msg: ${msg}`);
+          if (next >= 3) {
+              setExamLock(true);
+              setWarning('EXAM LOCKED. You have exceeded maximum violations. Admin unblock required.');
+              logAction('EXAM_LOCKED', 'Exceeded 3 violations');
+              stopProctoring();
+          }
+          return next;
+      });
+  };
+
+  // Prevent Copy Paste & Tab Switch
   useEffect(() => {
     const handleCopy = (ev) => {
-      ev.preventDefault();
-      ev.clipboardData.setData('text/plain', 'Copy is disabled here');
-      setWarning('Copy is disabled during tests.');
-      axios.post('/sections/activity/monitor', { event: 'copy_attempt', details: 'copy blocked' }).catch(() => {});
+      if (proctoringActive) {
+          ev.preventDefault();
+          ev.clipboardData.setData('text/plain', 'Cheating strictly prohibited!');
+          handleViolation('Copying is blocked');
+      }
     };
     const handlePaste = (ev) => {
-      ev.preventDefault();
-      setWarning('Paste is disabled during tests.');
-      axios.post('/sections/activity/monitor', { event: 'paste_attempt', details: 'paste blocked' }).catch(() => {});
+      if (proctoringActive) {
+          ev.preventDefault();
+          handleViolation('Pasting is blocked');
+      }
     };
+    const handleVisibility = () => {
+      if (proctoringActive && document.visibilityState !== 'visible') {
+          handleViolation('Window switched/Tab lost focus');
+      }
+    };
+    const handleKeydown = (e) => {
+        if (proctoringActive) {
+            if (e.key === 'Escape' || (e.altKey && e.key === 'Tab')) {
+                e.preventDefault();
+                handleViolation('Restricted shortcut used');
+            }
+        }
+    };
+
     window.addEventListener('copy', handleCopy);
     window.addEventListener('paste', handlePaste);
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('keydown', handleKeydown);
     return () => {
       window.removeEventListener('copy', handleCopy);
       window.removeEventListener('paste', handlePaste);
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('keydown', handleKeydown);
     };
+  }, [proctoringActive]);
+
+  useEffect(() => {
+      return () => {
+          if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      };
   }, []);
 
-  useEffect(() => {
-    const handleExamEvent = (eventName, detail) => {
-      if (examLock) {
-        return;
-      }
-      setTrackingEvents((prev) => [...prev, { event: eventName, detail, ts: Date.now() }]);
-      axios.post('/sections/activity/monitor', { event: eventName, details: detail }).catch(() => {});
-      if (eventName === 'window_switch') {
-        const next = screenSwitchCount + 1;
-        setScreenSwitchCount(next);
-        setWarning(`Window switch detected ${next} times. Keep focus. Once 3+ switches happen your session will lock.`);
-        if (next >= 3) {
-          setExamLock(true);
-          setWarning('Exam locked due to repeated window switching. Contact admin.');
-          axios.post('/sections/exam/lock', { reason: 'frequent_window_switch' }).catch(() => {});
-        }
-      }
-      if (eventName === 'fullscreen_exit' || eventName === 'escape_pressed') {
-        setExamLock(true);
-        setWarning('Exam locked due to fullscreen exit or ESC key usage. Contact admin.');
-        axios.post('/sections/exam/lock', { reason: eventName }).catch(() => {});
-      }
-    };
-
-    const handleKeyDown = (e) => {
-      if (examLock) return;
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        handleExamEvent('escape_pressed', 'User pressed Escape in exam mode');
-        return;
-      }
-      if (e.altKey && e.key === 'Tab') {
-        e.preventDefault();
-        handleExamEvent('app_switch_try', 'Alt+Tab pressed');
-        return;
-      }
-      if ((e.ctrlKey && e.key.toLowerCase() === 'tab') || e.key === 'F11') {
-        e.preventDefault();
-        handleExamEvent('app_switch_try', `${e.key} pressed`);
-      }
-    };
-
-    const handleBlur = () => {
-      if (examLock) return;
-      handleExamEvent('window_switch', `blur event state=${document.visibilityState}`);
-    };
-
-    const handleFullscreenChange = () => {
-      const active = !!document.fullscreenElement;
-      if (!active && !examLock && activeVideo) {
-        handleExamEvent('fullscreen_exit', 'Fullscreen exited during exam video');
-      }
-    };
-
-    const handleBeforeUnload = (e) => {
-      if (!examLock) {
-        const message = 'Exiting this page during exam may be considered cheating. Continue?';
-        e.returnValue = message;
-        return message;
-      }
-      return null;
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('blur', handleBlur);
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('blur', handleBlur);
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [examLock, screenSwitchCount, activeVideo]);
-
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState !== 'visible') {
-        const next = switchCount + 1;
-        setSwitchCount(next);
-        setWarning(`You switched away from test/video area ${next} times. Stay focused to avoid lock.`);
-        axios.post('/sections/activity/monitor', { event: 'window_switch', details: `count=${next}` }).catch(() => {});
-      }
-    };
-    window.addEventListener('visibilitychange', handleVisibility);
-    return () => window.removeEventListener('visibilitychange', handleVisibility);
-  }, [switchCount]);
-
-  const scheduleLiveClass = async () => {
-    if (!newLive.title.trim() || !newLive.scheduledAt || !newLive.meetingLink.trim()) {
-      alert('Please fill title, date/time, and meeting link.');
-      return;
-    }
-    try {
-      await axios.post('/sections/live', {
-        title: newLive.title,
-        section: newLive.section,
-        scheduledAt: newLive.scheduledAt,
-        meetingLink: newLive.meetingLink,
-        description: newLive.description,
-      });
-      setNewLive({ ...newLive, title: '', scheduledAt: '', meetingLink: '', description: '' });
-      fetchLive();
-      alert('Live class scheduled.');
-    } catch (err) {
-      console.error(err);
-      alert('Could not schedule live class.');
-    }
-  };
-
-  const sendMessage = async () => {
-    if (!chat.trim()) return;
-    try {
-      await axios.post('/sections/chat', { section, message: chat });
-      setChat('');
-      fetchChat();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const raiseHand = async () => {
-    try {
-      await axios.post('/sections/chat', { section, message: '✔ Raise hand' });
-      fetchChat();
-      alert('Raise hand sent.');
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const watchVideo = async (material) => {
-    if (examLock) {
-      alert('Exam is locked due to policy violation. Contact administrator.');
-      return;
-    }
-    try {
-      await axios.post(`/sections/materials/${material.id}/watch`);
-      setActiveVideo(material);
-      setWarning('Video in fullscreen. Please do not switch windows while watching.');
-      if (videoAreaRef.current && videoAreaRef.current.requestFullscreen) {
-        videoAreaRef.current.requestFullscreen().catch(() => {});
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Unable to record video watch.');
-    }
-  };
-
   return (
-    <Container sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom>Section Learning</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Welcome {user.username || 'Guest'} ({user.role || 'N/A'})</Typography>
-      <Alert severity="info" sx={{ mb: 2 }}>
-        Exam Mode: 1) AI assistance disabled by policy 2) Copy/paste blocked 3) Window switch, ESC, screen-share triggers lock.
-      </Alert>
-      {examLock && <Alert severity="error" sx={{ mb: 2 }}>Exam locked due to violation. Contact faculty immediately.</Alert>}
-      <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        <TextField label="Section" value={section} onChange={(e) => setSection(e.target.value)} size="small" />
-        <Button variant="contained" onClick={() => { localStorage.setItem('section', section); fetchMaterials(); fetchLive(); fetchChat(); }}>Refresh</Button>
-      </Box>
-
-      {['FACULTY', 'PRINCIPAL'].includes(user.role) && (
-        <Card sx={{ mb: 2 }}>
-          <CardContent>
-            <Typography variant="h6">Schedule Live Class</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mt: 2 }}>
-              <TextField label="Title" value={newLive.title} onChange={(e) => setNewLive({ ...newLive, title: e.target.value })} />
-              <TextField label="Section" value={newLive.section} onChange={(e) => { setNewLive({ ...newLive, section: e.target.value }); setSection(e.target.value); }} />
-              <TextField type="datetime-local" label="Date & Time" InputLabelProps={{ shrink: true }} value={newLive.scheduledAt} onChange={(e) => setNewLive({ ...newLive, scheduledAt: e.target.value })} />
-              <TextField label="Meeting Link" value={newLive.meetingLink} onChange={(e) => setNewLive({ ...newLive, meetingLink: e.target.value })} />
-              <TextField label="Description" fullWidth multiline minRows={2} value={newLive.description} onChange={(e) => setNewLive({ ...newLive, description: e.target.value })} sx={{ gridColumn: '1 / span 2' }} />
-            </Box>
-            <Button variant="contained" sx={{ mt: 2 }} onClick={scheduleLiveClass}>Schedule</Button>
-          </CardContent>
-        </Card>
+    <Container sx={{ py: 4, opacity: examLock ? 0.5 : 1 }}>
+      <Typography variant="h4" gutterBottom>Exam & Learning Section</Typography>
+      
+      {warning && (
+          <Alert severity={examLock ? "error" : "warning"} sx={{ mb: 3, fontWeight: 'bold', fontSize: '1.1rem' }}>
+              {warning}
+          </Alert>
       )}
 
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Typography variant="h6">Live Classes</Typography>
-          <List>
-            {live.length === 0 ? <Typography>No live classes scheduled.</Typography> : live.map((item) => (
-              <ListItem key={item.id} secondaryAction={
-                <Button variant="contained" color="primary" onClick={() => setActiveMeeting(item.meetingLink || `maniedutech-live-${item.id}`)}>
-                  Join Active Class
-                </Button>
-              }>
-                <ListItemText primary={item.title} secondary={`${new Date(item.scheduledAt).toLocaleString()} • ${item.description || 'No description'}`} />
-              </ListItem>
-            ))}
-          </List>
+      {examLock && (
+          <Paper sx={{ p: 4, mb: 4, textAlign: 'center', bgcolor: '#ffebee' }}>
+              <Typography variant="h5" color="error" fontWeight="bold">Exam Lock Enabled</Typography>
+              <Typography>Your session has been strictly locked due to multiple policy violations. You can no longer interact with this page until a faculty member or admin unblocks you via MongoDB.</Typography>
+          </Paper>
+      )}
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 3, pointerEvents: examLock ? 'none' : 'auto' }}>
           
-          {activeMeeting && (
-            <Box sx={{ mt: 3, p: 2, border: '1px solid #ddd', borderRadius: 2, backgroundColor: '#f9f9f9' }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography variant="h6" color="secondary">🟢 Live Video & Voice Call</Typography>
-                <Button variant="outlined" color="error" onClick={() => setActiveMeeting(null)}>Leave Class</Button>
-              </Stack>
-              <Box sx={{ width: '100%', height: '500px', backgroundColor: '#000', borderRadius: 2, overflow: 'hidden' }}>
-                <iframe 
-                  src={`https://meet.jit.si/${encodeURIComponent(activeMeeting)}`}
-                  allow="camera; microphone; fullscreen; display-capture; autoplay"
-                  style={{ width: '100%', height: '100%', border: 'none' }}
-                  title="Live Class Video"
-                />
-              </Box>
-            </Box>
-          )}
-        </CardContent>
-      </Card>
+          <Box>
+              <Card sx={{ mb: 3, background: 'linear-gradient(to right, #1e3c72, #2a5298)', color: 'white' }}>
+                  <CardContent>
+                      <Typography variant="h6">ML Proctoring Security</Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9, mb: 2 }}>
+                          This test uses Google TensorFlow Face-Tracking. Do not look away, change tabs, or copy/paste.
+                      </Typography>
+                      {!proctoringActive && !examLock ? (
+                          <Button variant="contained" color="secondary" onClick={startProctoring} disabled={!isModelLoaded}>
+                              {isModelLoaded ? "Start Secure Exam Session" : "Loading ML Models..."}
+                          </Button>
+                      ) : proctoringActive ? (
+                          <Button variant="contained" color="error" onClick={stopProctoring}>
+                              End Session / Submit
+                          </Button>
+                      ) : null}
+                  </CardContent>
+              </Card>
 
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Typography variant="h6">Class Chat</Typography>
-          <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-            <Button variant="outlined" color="info" onClick={raiseHand}>✋ Raise Hand</Button>
-            <Button variant="outlined" color="success" onClick={() => setActiveMeeting(`maniedutech-voice-${section}`)}>📞 Join Voice Room</Button>
-          </Stack>
-          <List sx={{ maxHeight: 200, overflow: 'auto', mb: 2, border: '1px solid #eee', borderRadius: 1, p: 1 }}>
-            {chatLog.map((msg) => (
-              <ListItem key={msg.id}>
-                <ListItemText primary={`${msg.sender} (${msg.role})`} secondary={msg.message} />
-              </ListItem>
-            ))}
-          </List>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <TextField fullWidth value={chat} onChange={(e) => setChat(e.target.value)} placeholder="Type message" />
-            <Button variant="contained" onClick={sendMessage}>Send</Button>
+              {activeVideo && proctoringActive && (
+                  <Card sx={{ mb: 3 }}>
+                    <CardContent>
+                      <Typography variant="h6">Watching: {activeVideo.title}</Typography>
+                      <Box sx={{ mt: 1, position: 'relative', width: '100%', height: 0, paddingBottom: '56.25%' }}>
+                        <iframe
+                          src={activeVideo.contentUrl}
+                          title={activeVideo.title}
+                          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                          allow="autoplay; fullscreen"
+                        />
+                      </Box>
+                    </CardContent>
+                  </Card>
+              )}
+
+              <Card>
+                <CardContent>
+                  <Typography variant="h6">Study Materials & Quizzes</Typography>
+                  <List>
+                    {materials.length === 0 ? <Typography>No materials.</Typography> : materials.map((m) => (
+                      <ListItem key={m.id} sx={{ justifyContent: 'space-between', borderBottom: '1px solid #eee' }}>
+                        <ListItemText primary={`${m.materialType}: ${m.title}`} secondary={m.contentUrl || m.description || 'No URL'} />
+                        {m.materialType === 'VIDEO' ? (
+                          <Button variant="outlined" size="small" onClick={() => {
+                              if (!proctoringActive) {
+                                  alert("Start secure session first!");
+                                  return;
+                              }
+                              setActiveVideo(m);
+                          }}>
+                            Start Attempt
+                          </Button>
+                        ) : null}
+                      </ListItem>
+                    ))}
+                  </List>
+                </CardContent>
+              </Card>
           </Box>
-        </CardContent>
-      </Card>
 
-      {warning && <Alert severity="warning" sx={{ mb: 2 }}>{warning}</Alert>}
-      {activeVideo && (
-        <Card sx={{ mb: 2 }} ref={videoAreaRef}>
-          <CardContent>
-            <Typography variant="h6">Watching: {activeVideo.title}</Typography>
-            <Box sx={{ mt: 1, position: 'relative', width: '100%', height: 0, paddingBottom: '56.25%' }}>
-              <iframe
-                src={activeVideo.contentUrl}
-                title={activeVideo.title}
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                allow="autoplay; fullscreen; camera; microphone"
-              />
-            </Box>
-            {switchCount > 0 && <Typography color="error" sx={{ mt: 2 }}>Window switch detected {switchCount} times. Repeated switches may lead to temporary lock by admin.</Typography>}
-          </CardContent>
-        </Card>
-      )}
-      <Card>
-        <CardContent>
-          <Typography variant="h6">Materials</Typography>
-          <List>
-            {materials.length === 0 ? <Typography>No materials.</Typography> : materials.map((m) => (
-              <ListItem key={m.id} sx={{ justifyContent: 'space-between' }}>
-                <ListItemText primary={`${m.materialType}: ${m.title}`} secondary={m.contentUrl || m.description || 'No URL'} />
-                {m.materialType === 'VIDEO' ? (
-                  <Button variant="outlined" size="small" onClick={() => watchVideo(m)}>
-                    Watch Video
-                  </Button>
-                ) : null}
-              </ListItem>
-            ))}
-          </List>
-        </CardContent>
-      </Card>
+          <Box>
+              <Paper sx={{ p: 2, height: 'max-content', position: 'sticky', top: 20 }}>
+                  <Typography variant="subtitle2" color="gray" fontWeight="bold" mb={1} align="center">
+                      PROCTORING CAMERA
+                  </Typography>
+                  <div style={{ position: 'relative', width: '100%', borderRadius: 8, overflow: 'hidden', background: '#000', aspectRatio: '4/3' }}>
+                      <video 
+                          ref={videoRef} 
+                          autoPlay 
+                          playsInline 
+                          muted 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      {!proctoringActive && (
+                          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: 'white', fontSize: 12 }}>
+                              Camera Offline
+                          </div>
+                      )}
+                  </div>
+                  {proctoringActive && (
+                      <Alert severity="info" sx={{ mt: 2, fontSize: 11, '& .MuiAlert-icon': {fontSize: 14} }}>
+                          AI scanning for face presence.
+                      </Alert>
+                  )}
+              </Paper>
+          </Box>
+      </Box>
     </Container>
   );
 };

@@ -33,7 +33,7 @@ const Navbar = () => {
             <Button color="inherit" component={Link} to="/coupons">Coupons</Button>
           </>
         )}
-        <Button color="inherit" component={Link} to="/chatbot">Chatbot</Button>
+        <Button color="inherit" onClick={() => window.dispatchEvent(new Event('open-chatbot'))}>Chatbot</Button>
         {(role === 'FACULTY' || role === 'PRINCIPAL') && (
           <Button color="inherit" component={Link} to="/faculty">Faculty</Button>
         )}
