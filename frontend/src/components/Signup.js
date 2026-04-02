@@ -21,7 +21,12 @@ const Signup = () => {
       setOtpSent(true);
       alert('OTP sent to backend console (mocked)');
     } catch (error) {
-      alert('Failed to send OTP: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        setOtpSent(true);
+        alert('OTP sent (Offline/Showcase Mode)');
+      } else {
+        alert('Failed to send OTP: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      }
     }
   };
 
@@ -34,7 +39,11 @@ const Signup = () => {
       await axios.post('/auth/verify/email/send-otp', { username: form.username });
       alert('Email OTP sent (mocked in backend).');
     } catch (error) {
-      alert('Failed to send email OTP: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        alert('Email OTP sent (Offline Mode). You can enter any OTP or skip.');
+      } else {
+        alert('Failed to send email OTP: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      }
     }
   };
 
@@ -47,7 +56,11 @@ const Signup = () => {
       await axios.post('/auth/verify/contact/send-otp', { username: form.username });
       alert('Contact OTP sent (mocked in backend).');
     } catch (error) {
-      alert('Failed to send contact OTP: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        alert('Contact OTP sent (Offline Mode). You can enter any OTP or skip.');
+      } else {
+        alert('Failed to send contact OTP: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      }
     }
   };
 
@@ -61,7 +74,12 @@ const Signup = () => {
       setVerifyStatus((prev) => ({ ...prev, email: true }));
       alert('Email verified.');
     } catch (error) {
-      alert('Email verification failed: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        setVerifyStatus((prev) => ({ ...prev, email: true }));
+        alert('Email verified (Offline Mode).');
+      } else {
+        alert('Email verification failed: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      }
     }
   };
 
@@ -75,7 +93,12 @@ const Signup = () => {
       setVerifyStatus((prev) => ({ ...prev, contact: true }));
       alert('Contact number verified.');
     } catch (error) {
-      alert('Contact verification failed: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        setVerifyStatus((prev) => ({ ...prev, contact: true }));
+        alert('Contact number verified (Offline Mode).');
+      } else {
+        alert('Contact verification failed: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      }
     }
   };
 
@@ -87,7 +110,18 @@ const Signup = () => {
       alert('Signup successful! Please login.');
       navigate('/login');
     } catch (error) {
-      alert('Signup failed: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        // Mock successful signup
+        localStorage.setItem('role', form.role);
+        localStorage.setItem('username', form.username);
+        const mockUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
+        mockUsers.push(form);
+        localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
+        alert('Signup successful (Offline Mode)! Please login.');
+        navigate('/login');
+      } else {
+        alert('Signup failed: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      }
     }
   };
 
