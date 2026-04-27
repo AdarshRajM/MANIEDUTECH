@@ -133,7 +133,7 @@ const SectionLearning = () => {
       });
   };
 
-  // Prevent Copy Paste & Tab Switch
+  // Prevent Copy Paste & Tab Switch & Right Click
   useEffect(() => {
     const handleCopy = (ev) => {
       if (proctoringActive) {
@@ -148,29 +148,43 @@ const SectionLearning = () => {
           handleViolation('Pasting is blocked');
       }
     };
+    const handleContextMenu = (ev) => {
+      if (proctoringActive) {
+          ev.preventDefault();
+          handleViolation('Right-click is blocked');
+      }
+    };
     const handleVisibility = () => {
       if (proctoringActive && document.visibilityState !== 'visible') {
-          handleViolation('Window switched/Tab lost focus');
+          handleViolation('Window switched/Tab lost focus! Strike added.');
       }
     };
     const handleKeydown = (e) => {
         if (proctoringActive) {
-            if (e.key === 'Escape' || (e.altKey && e.key === 'Tab')) {
-                e.preventDefault();
-                handleViolation('Restricted shortcut used');
+            if (e.key === 'Escape' || (e.altKey && e.key === 'Tab') || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta' || e.key === 'Shift') {
+                handleViolation(`Key '${e.key}' is restricted during the exam!`);
             }
         }
     };
+    const handleFullscreenChange = () => {
+        if (proctoringActive && !document.fullscreenElement) {
+            handleViolation('Fullscreen exited! You must remain in fullscreen.');
+        }
+    }
 
     window.addEventListener('copy', handleCopy);
     window.addEventListener('paste', handlePaste);
-    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('keydown', handleKeydown);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => {
       window.removeEventListener('copy', handleCopy);
       window.removeEventListener('paste', handlePaste);
-      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('keydown', handleKeydown);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, [proctoringActive]);
 
@@ -181,7 +195,7 @@ const SectionLearning = () => {
   }, []);
 
   return (
-    <Container sx={{ py: 4, opacity: examLock ? 0.5 : 1 }}>
+    <Container sx={{ py: 4, opacity: examLock ? 0.5 : 1, userSelect: proctoringActive ? 'none' : 'auto' }}>
       <Typography variant="h4" gutterBottom>Exam & Learning Section</Typography>
       
       {warning && (

@@ -42,45 +42,46 @@ const Chatbot = () => {
     setMessages(prev => [...prev, { sender: 'user', text: userMsg }]);
     setQuery('');
     
-    // Simulate thinking delay
     setMessages(prev => [...prev, { sender: 'ai', text: '...' }]);
 
-    let aiReply = "I am not quite sure how to help with that. Could you ask about courses, signup, login, or any general knowledge?";
-    const lowerQ = userMsg.toLowerCase();
-
-    // Check pre-defined paths
-    let foundPath = false;
-    for (let key in paths) {
-      if (lowerQ.includes(key)) {
-        aiReply = paths[key] + "\nI hope this path helps!";
-        foundPath = true;
-        break;
+    let aiReply = "I am currently offline or missing my API key. Please set REACT_APP_GEMINI_API_KEY.";
+    
+    try {
+      const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+      if (apiKey) {
+          const prompt = `You are an AI assistant for MANIEDUTECH. Respond in a mix of Hindi and Bhojpuri. Give exact and direct answers about the platform, courses, tests, and student queries. Do not just say 'go to this path', explain exactly what they need to know. User query: ${userMsg}`;
+          
+          const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+              contents: [{ parts: [{ text: prompt }] }]
+          });
+          
+          if (res.data && res.data.candidates && res.data.candidates[0].content) {
+              aiReply = res.data.candidates[0].content.parts[0].text;
+          }
+      } else {
+          // Fallback to basic paths if no API key
+          const lowerQ = userMsg.toLowerCase();
+          let foundPath = false;
+          for (let key in paths) {
+            if (lowerQ.includes(key)) {
+              aiReply = "Bhaiya, " + paths[key] + "\nE path use kar lijiye!";
+              foundPath = true;
+              break;
+            }
+          }
+          if (!foundPath) {
+              aiReply = "Rauwa, humke Gemini API key chahi exact answer khatir. Abhi humke naihke malum!";
+          }
       }
+    } catch (err) {
+        aiReply = "Maaf karab, server me kuch error ba. (Error connecting to AI)";
     }
 
-    if (!foundPath) {
-      // Try Wikipedia API for general knowledge
-      try {
-        const res = await axios.get(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(userMsg)}&utf8=&format=json&origin=*`);
-        if (res.data.query.search.length > 0) {
-          const wikiSnippet = res.data.query.search[0].snippet.replace(/(<([^>]+)>)/gi, "");
-          aiReply = "Here is what I found: " + wikiSnippet + "...";
-        } else {
-          // If no wiki result, generic reply
-          aiReply = "I couldn't find an exact answer. If it's about our platform, try asking about 'signup', 'courses', or 'dashboard'.";
-        }
-      } catch (err) {
-        // Fallback
-      }
-    }
-
-    setTimeout(() => {
-      setMessages(prev => {
-        const newMsg = [...prev];
-        newMsg.pop(); // remove '...'
-        return [...newMsg, { sender: 'ai', text: aiReply }];
-      });
-    }, 800);
+    setMessages(prev => {
+      const newMsg = [...prev];
+      newMsg.pop(); // remove '...'
+      return [...newMsg, { sender: 'ai', text: aiReply }];
+    });
   };
 
   return (
