@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextField, Button, Container, Typography, Box, FormControl, InputLabel, Select, MenuItem, Stack } from '@mui/material';
+import { TextField, Button, Container, Typography, Box, FormControl, InputLabel, Select, MenuItem, Stack, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,6 +9,8 @@ const Signup = () => {
   const [verifyStatus, setVerifyStatus] = useState({ email: false, contact: false });
   const [emailOtp, setEmailOtp] = useState('');
   const [contactOtp, setContactOtp] = useState('');
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [signupCreds, setSignupCreds] = useState({ id: '', password: '' });
   const navigate = useNavigate();
 
   const handleSendOtp = async () => {
@@ -107,8 +109,8 @@ const Signup = () => {
       await axios.post('/auth/signup', form);
       localStorage.setItem('role', form.role);
       localStorage.setItem('username', form.username);
-      alert('Signup successful! Please login.');
-      navigate('/login');
+      setSignupCreds({ id: form.username, password: form.password });
+      setSuccessDialogOpen(true);
     } catch (error) {
       if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
         // Mock successful signup
@@ -117,12 +119,17 @@ const Signup = () => {
         const mockUsers = JSON.parse(localStorage.getItem('mockUsers') || '[]');
         mockUsers.push(form);
         localStorage.setItem('mockUsers', JSON.stringify(mockUsers));
-        alert('Signup successful (Offline Mode)! Please login.');
-        navigate('/login');
+        setSignupCreds({ id: form.username, password: form.password });
+        setSuccessDialogOpen(true);
       } else {
         alert('Signup failed: ' + (error.response?.data?.message || error.message || 'Unknown error'));
       }
     }
+  };
+
+  const handleCloseSuccessDialog = () => {
+    setSuccessDialogOpen(false);
+    navigate('/login');
   };
 
   return (
@@ -222,6 +229,27 @@ const Signup = () => {
         </Button>
         <Button onClick={() => navigate('/login')}>Already have an account? Login</Button>
       </Box>
+
+      {/* Success Dialog */}
+      <Dialog open={successDialogOpen} onClose={handleCloseSuccessDialog} PaperProps={{ sx: { borderRadius: 3, p: 2 } }}>
+        <DialogTitle sx={{ fontWeight: 'bold', color: 'success.main', textAlign: 'center' }}>
+          Account Created Successfully! 🎉
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Your account is created successfully. Please save your login credentials below:
+          </Typography>
+          <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 2, textAlign: 'left', display: 'inline-block' }}>
+            <Typography variant="h6"><strong>ID:</strong> {signupCreds.id}</Typography>
+            <Typography variant="h6"><strong>Password:</strong> {signupCreds.password}</Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center' }}>
+          <Button onClick={handleCloseSuccessDialog} variant="contained" color="primary" sx={{ px: 4 }}>
+            Go to Login
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

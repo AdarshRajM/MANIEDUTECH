@@ -269,7 +269,11 @@ const Dashboard = () => {
               { label: 'View Students', path: '/students', color: '#667eea' },
               { label: 'View Courses', path: '/courses', color: '#764ba2' },
               { label: 'View Marks', path: '/marks', color: '#f093fb' },
-              { label: 'Section Hub', path: '/section', color: '#4facfe' }
+              { label: 'Section Hub', path: '/section', color: '#4facfe' },
+              { label: 'Communication Hub', path: '/communication', color: '#ff9a9e' },
+              { label: 'Proctored Tests', path: '/tests', color: '#a18cd1' },
+              { label: 'Management', path: '/management', color: '#fbc2eb' },
+              { label: 'Schedule Live', path: '/schedule-live', color: '#84fab0' }
             ].map((action, idx) => (
               <Grid item xs={6} sm={3} key={idx}>
                 <Button

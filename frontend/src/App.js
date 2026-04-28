@@ -16,11 +16,18 @@ const Courses = lazy(() => import('./components/Courses'));
 const Marks = lazy(() => import('./components/Marks'));
 const Navbar = lazy(() => import('./components/Navbar'));
 const Management = lazy(() => import('./components/Management'));
+const AddCourse = lazy(() => import('./components/AddCourse'));
+const AddProduct = lazy(() => import('./components/AddProduct'));
+const UpdateMarks = lazy(() => import('./components/UpdateMarks'));
 const Products = lazy(() => import('./components/Products'));
 const Wishlist = lazy(() => import('./components/Wishlist'));
 const Coupons = lazy(() => import('./components/Coupons'));
 const Chatbot = lazy(() => import('./components/Chatbot'));
 const SectionLearning = lazy(() => import('./components/SectionLearning'));
+const ScheduleLiveClass = lazy(() => import('./components/ScheduleLiveClass'));
+const CommunicationHub = lazy(() => import('./components/CommunicationHub'));
+const TestPortal = lazy(() => import('./components/TestPortal'));
+const ActiveTest = lazy(() => import('./components/ActiveTest'));
 const FacultyPortal = lazy(() => import('./components/FacultyPortal'));
 const FacultyVideoUpload = lazy(() => import('./components/FacultyVideoUpload'));
 const FacultyTestUpload = lazy(() => import('./components/FacultyTestUpload'));
@@ -78,10 +85,17 @@ function App() {
                     <Route path="/courses" element={<Courses />} />
                     <Route path="/marks" element={<Marks />} />
                     <Route path="/management" element={<Management />} />
+                    <Route path="/management/add-course" element={<AddCourse />} />
+                    <Route path="/management/add-product" element={<AddProduct />} />
+                    <Route path="/management/update-marks" element={<UpdateMarks />} />
                     <Route path="/products" element={<Products />} />
                     <Route path="/wishlist" element={<Wishlist />} />
                     <Route path="/coupons" element={<Coupons />} />
                     <Route path="/section" element={<SectionLearning />} />
+                    <Route path="/communication" element={<CommunicationHub />} />
+                    <Route path="/tests" element={<TestPortal />} />
+                    <Route path="/tests/active/:testId" element={<ActiveTest />} />
+                    <Route path="/schedule-live" element={<ScheduleLiveClass />} />
                     <Route path="/faculty" element={<FacultyPortal />} />
                     <Route path="/faculty/video" element={<FacultyVideoUpload />} />
                     <Route path="/faculty/test" element={<FacultyTestUpload />} />
