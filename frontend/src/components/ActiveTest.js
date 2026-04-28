@@ -45,20 +45,32 @@ const ActiveTest = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
-    // Periodically check if video track is still running (simulating face check)
+    // Periodically check if video track is still running (simulating strict AI face check)
     const checkMediaInterval = setInterval(() => {
       if (streamRef.current) {
         const videoTrack = streamRef.current.getVideoTracks()[0];
         if (!videoTrack || videoTrack.readyState === 'ended' || !videoTrack.enabled) {
-          triggerWarning("Camera feed lost or covered. Face must be visible!");
+          triggerWarning("AI Eye Tracking Alert: Face not detected or eye contact lost! Please look at the screen.");
         }
       }
-    }, 5000);
+    }, 3000);
+
+    const preventDefault = (e) => {
+      e.preventDefault();
+      triggerWarning("Copy/Paste/Right-click is strictly prohibited!");
+    };
+    
+    document.addEventListener('contextmenu', preventDefault);
+    document.addEventListener('copy', preventDefault);
+    document.addEventListener('paste', preventDefault);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('contextmenu', preventDefault);
+      document.removeEventListener('copy', preventDefault);
+      document.removeEventListener('paste', preventDefault);
       clearInterval(checkMediaInterval);
     };
   }, [hasStarted, isBlocked, warnings]);
@@ -130,10 +142,18 @@ const ActiveTest = () => {
   }
 
   return (
-    <Box sx={{ bgcolor: '#fff', minHeight: '100vh', width: '100vw', p: 3, position: 'relative' }}>
+    <Box 
+      sx={{ bgcolor: '#fff', minHeight: '100vh', width: '100vw', p: 3, position: 'relative', userSelect: 'none' }}
+      onContextMenu={(e) => { e.preventDefault(); triggerWarning("Right-click is blocked!"); }}
+      onCopy={(e) => { e.preventDefault(); triggerWarning("Copying is blocked!"); }}
+      onPaste={(e) => { e.preventDefault(); triggerWarning("Pasting is blocked!"); }}
+    >
       {/* Video Feed overlay */}
-      <Box sx={{ position: 'fixed', bottom: 20, right: 20, width: 150, height: 112, bgcolor: '#000', borderRadius: 2, overflow: 'hidden', boxShadow: 3, zIndex: 1000 }}>
+      <Box sx={{ position: 'fixed', bottom: 20, right: 20, width: 150, height: 112, bgcolor: '#000', borderRadius: 2, overflow: 'hidden', boxShadow: 3, zIndex: 1000, border: '2px solid #4caf50' }}>
         <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <Typography variant="caption" sx={{ position: 'absolute', bottom: 0, left: 0, right: 0, bgcolor: 'rgba(0,0,0,0.6)', color: '#4caf50', textAlign: 'center', fontSize: '0.6rem', py: 0.5 }}>
+          ● AI Eye Tracking Active
+        </Typography>
       </Box>
 
       <Typography variant="h5" gutterBottom>Ongoing Test - {testType}</Typography>

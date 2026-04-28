@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { 
     Dashboard, People, School, Assessment, Store, Favorite, 
     LocalOffer, VideoCall, Brightness4, Brightness7, Notifications, 
-    Menu, Close, ExitToApp
+    Menu, Close, ExitToApp, Chat, Assignment, AddBox, Create, UploadFile
 } from '@mui/icons-material';
 
 import ThreeBackground from './ThreeBackground';
@@ -25,13 +25,19 @@ const Layout = ({ children }) => {
     { name: 'Products', path: '/products', icon: <Store /> },
     { name: 'Wishlist', path: '/wishlist', icon: <Favorite /> },
     { name: 'Coupons', path: '/coupons', icon: <LocalOffer /> },
-    { name: 'Live Class', path: '/live', icon: <VideoCall /> } // New live class page
+    { name: 'Live Class', path: '/live', icon: <VideoCall /> }, // New live class page
+    { name: 'Communication Hub', path: '/communication', icon: <Chat /> },
+    { name: 'Proctored Tests', path: '/tests', icon: <Assignment /> }
   ];
 
   if (role === 'PRINCIPAL' || role === 'FACULTY') {
     menuItems.push({ name: 'Students Management', path: '/students', icon: <People /> });
     menuItems.push({ name: 'Faculty Portal', path: '/faculty', icon: <School /> });
+    menuItems.push({ name: 'Schedule Live', path: '/schedule-live', icon: <VideoCall /> });
     menuItems.push({ name: 'Management System', path: '/management', icon: <School /> });
+    menuItems.push({ name: 'Add Course', path: '/management/add-course', icon: <AddBox /> });
+    menuItems.push({ name: 'Add Material', path: '/management/add-product', icon: <UploadFile /> });
+    menuItems.push({ name: 'Update Marks', path: '/management/update-marks', icon: <Create /> });
   }
 
   const handleLogout = () => {
