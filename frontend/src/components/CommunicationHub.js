@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Typography, TextField, Button, Box, Paper, Grid, List, ListItem, ListItemText, Divider, Avatar, Stack } from '@mui/material';
 import { Search, VideoCall, Call, GroupAdd } from '@mui/icons-material';
+import { motion } from 'framer-motion';
 
 const CommunicationHub = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,11 +86,13 @@ const CommunicationHub = () => {
             
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Search Results / Contacts</Typography>
             <List sx={{ flexGrow: 1, overflowY: 'auto' }}>
-              {searchResults.length > 0 ? searchResults.map(student => (
-                <ListItem button key={student.id} onClick={() => startChat(student)} sx={{ borderRadius: 2, mb: 1, bgcolor: '#f5f5f5' }}>
-                  <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>{student.name[0]}</Avatar>
-                  <ListItemText primary={student.name} secondary={`ID: ${student.id} | Reg: ${student.regNo}`} />
-                </ListItem>
+              {searchResults.length > 0 ? searchResults.map((student, idx) => (
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} key={student.id}>
+                  <ListItem button onClick={() => startChat(student)} sx={{ borderRadius: 2, mb: 1, bgcolor: '#f5f5f5', '&:hover': { bgcolor: '#e0e0e0' } }}>
+                    <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>{student.name[0]}</Avatar>
+                    <ListItemText primary={student.name} secondary={`ID: ${student.id} | Reg: ${student.regNo}`} />
+                  </ListItem>
+                </motion.div>
               )) : (
                 <Typography variant="body2" sx={{ textAlign: 'center', mt: 4, color: 'text.secondary' }}>
                   Search for students to start chatting.
@@ -121,11 +124,13 @@ const CommunicationHub = () => {
                 {/* Messages */}
                 <Box sx={{ flexGrow: 1, p: 2, overflowY: 'auto', bgcolor: '#fafafa' }}>
                   {(messages[activeChat.id] || []).map((msg, idx) => (
-                    <Box key={idx} sx={{ mb: 2, display: 'flex', justifyContent: msg.sender === 'Me' ? 'flex-end' : 'flex-start' }}>
-                      <Paper sx={{ p: 1.5, px: 2, bgcolor: msg.sender === 'Me' ? 'primary.light' : 'white', color: msg.sender === 'Me' ? 'white' : 'text.primary', borderRadius: 4 }}>
-                        <Typography variant="body1">{msg.text}</Typography>
-                      </Paper>
-                    </Box>
+                    <motion.div key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+                      <Box sx={{ mb: 2, display: 'flex', justifyContent: msg.sender === 'Me' ? 'flex-end' : 'flex-start' }}>
+                        <Paper sx={{ p: 1.5, px: 2, bgcolor: msg.sender === 'Me' ? 'primary.light' : 'white', color: msg.sender === 'Me' ? 'white' : 'text.primary', borderRadius: 4, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                          <Typography variant="body1">{msg.text}</Typography>
+                        </Paper>
+                      </Box>
+                    </motion.div>
                   ))}
                 </Box>
 

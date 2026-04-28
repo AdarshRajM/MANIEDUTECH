@@ -64,6 +64,17 @@ const ActiveTest = () => {
     document.addEventListener('copy', preventDefault);
     document.addEventListener('paste', preventDefault);
 
+    // Deep Anti-Cheat: Developer Tools Blocker
+    const antiDebugInterval = setInterval(() => {
+      const start = performance.now();
+      debugger; // This will pause execution if DevTools is open
+      const duration = performance.now() - start;
+      if (duration > 100) {
+        // DevTools likely opened, triggering pause
+        triggerWarning("DevTools / Debugger detected. Security Violation!");
+      }
+    }, 2000);
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -72,6 +83,7 @@ const ActiveTest = () => {
       document.removeEventListener('copy', preventDefault);
       document.removeEventListener('paste', preventDefault);
       clearInterval(checkMediaInterval);
+      clearInterval(antiDebugInterval);
     };
   }, [hasStarted, isBlocked, warnings]);
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { Container, Typography, Grid, Paper, Button, Box, Chip } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Assignment, Create, CameraAlt } from '@mui/icons-material';
+import { motion } from 'framer-motion';
 
 const TestPortal = () => {
   const navigate = useNavigate();
@@ -20,25 +21,33 @@ const TestPortal = () => {
       </Typography>
 
       <Grid container spacing={3}>
-        {mockTests.map(test => (
+        {mockTests.map((test, index) => (
           <Grid item xs={12} md={4} key={test.id}>
-            <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 3, boxShadow: 3, transition: '0.3s', '&:hover': { transform: 'translateY(-5px)' } }}>
-              <Box sx={{ mb: 2, color: 'primary.main' }}>
-                {test.icon}
-              </Box>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>{test.title}</Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 2 }}>
-                <Chip label={test.type} size="small" color="secondary" />
-                <Chip label={test.duration} size="small" variant="outlined" />
-              </Box>
-              <Button 
-                variant="contained" 
-                fullWidth 
-                onClick={() => navigate(`/tests/active/${test.id}?type=${test.type}`)}
-              >
-                Start Test
-              </Button>
-            </Paper>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              whileHover={{ scale: 1.05 }}
+            >
+              <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 4, boxShadow: '0 10px 30px rgba(0,0,0,0.1)', background: 'linear-gradient(145deg, #ffffff, #f0f0f0)' }}>
+                <Box sx={{ mb: 2, color: 'primary.main', '& > svg': { fontSize: 50 } }}>
+                  {test.icon}
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>{test.title}</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 3 }}>
+                  <Chip label={test.type} size="small" color="secondary" />
+                  <Chip label={test.duration} size="small" variant="outlined" />
+                </Box>
+                <Button 
+                  variant="contained" 
+                  fullWidth 
+                  onClick={() => navigate(`/tests/active/${test.id}?type=${test.type}`)}
+                  sx={{ borderRadius: 8, textTransform: 'none', fontWeight: 'bold' }}
+                >
+                  Start Secure Test
+                </Button>
+              </Paper>
+            </motion.div>
           </Grid>
         ))}
       </Grid>
